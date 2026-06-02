@@ -1,0 +1,93 @@
+global:
+  image:
+    tag: "v2.11.3"
+
+configs:
+  params:
+    server.insecure: "true"
+  cm:
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil then
+        if obj.status.health ~= nil then
+          hs.status = obj.status.health.status
+          if obj.status.health.message ~= nil then
+            hs.message = obj.status.health.message
+          end
+        end
+      end
+      return hs
+
+repoServer:
+  env:
+    - name: HELM_BINARY_PATH
+      value: /custom-tools/helm
+
+  volumes:
+    - name: custom-tools
+      emptyDir: {}
+
+  initContainers:
+    - name: helm-installer
+      image: alpine:3.19
+      command:
+        - sh
+        - -c
+        - |
+          set -ex
+          HELM_VERSION="v3.14.4"
+          case "$(uname -m)" in
+            x86_64)  ARCH="amd64" ;;
+            aarch64) ARCH="arm64" ;;
+            *)       echo "Unsupported arch"; exit 1 ;;
+          esac
+          wget -qO /tmp/helm.tar.gz \
+            "https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz"
+          tar -xzf /tmp/helm.tar.gz -C /tmp
+          mv /tmp/linux-${ARCH}/helm /custom-tools/helm
+          chmod +x /custom-tools/helm
+          /custom-tools/helm version
+      volumeMounts:
+        - name: custom-tools
+          mountPath: /custom-tools
+
+  volumeMounts:
+    - name: custom-tools
+      mountPath: /custom-tools
+
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8084"
+
+controller:
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+
+server:
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+
+applicationSet:
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+
+notifications:
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"

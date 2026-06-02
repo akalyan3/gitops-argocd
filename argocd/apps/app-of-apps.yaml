@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: gitops-apps
+  namespace: argocd
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  generators:
+    - list:
+        elements:
+          - appName: argocd-self
+            namespace: argocd
+            path: argocd/install
+            project: platform
+            syncWave: "-2"
+
+          - appName: prometheus-operator
+            namespace: monitoring
+            path: prometheus/operator
+            project: platform
+            syncWave: "0"
+
+          - appName: argocd-monitoring
+            namespace: monitoring
+            path: prometheus/config
+            project: platform
+            syncWave: "2"
+
+  template:
+    metadata:
+      name: "{{appName}}"
+      namespace: argocd
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{syncWave}}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: "{{project}}"
+      source:
+        repoURL: https://github.com/akalyan3/gitops-argocd.git
+        targetRevision: HEAD
+        path: "{{path}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true

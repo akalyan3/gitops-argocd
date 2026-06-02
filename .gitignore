@@ -1,0 +1,24 @@
+# Secrets — use Sealed Secrets or ESO instead
+*-secret.yaml
+*.secret.yaml
+secrets/
+.env
+.env.*
+
+# Helm chart dependencies — Argo CD fetches these at sync time
+charts/
+*.tgz
+
+# Kustomize local build output
+/build/
+/out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

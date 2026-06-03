@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-self
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/akalyan3/gitops-argocd.git
+    targetRevision: HEAD
+    path: argocd/install
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
+      - SkipDryRunOnMissingResource=true
+      - Replace=false
+  ignoreDifferences:
+    - group: batch
+      kind: Job
+      jsonPointers:
+        - /status
+    - group: rbac.authorization.k8s.io
+      kind: Role
+      name: argocd-redis-secret-init
+      jsonPointers:
+        - /metadata
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+      name: argocd-redis-secret-init
+      jsonPointers:
+        - /metadata

@@ -9,12 +9,6 @@ spec:
   generators:
     - list:
         elements:
-          - appName: argocd-self
-            namespace: argocd
-            path: argocd/install
-            project: platform
-            syncWave: "-2"
-
           - appName: prometheus-operator
             namespace: monitoring
             path: prometheus/operator

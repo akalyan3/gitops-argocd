@@ -1,5 +1,11 @@
 fullnameOverride: prometheus
 
+prometheusOperator:
+  admissionWebhooks:
+    enabled: false
+  tls:
+    enabled: false
+
 grafana:
   enabled: true
   adminPassword: prom-operator

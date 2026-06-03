@@ -8,6 +8,7 @@ prometheusOperator:
 
 grafana:
   enabled: true
+  replicas: 2
   adminPassword: prom-operator
   defaultDashboardsEnabled: true
   sidecar:

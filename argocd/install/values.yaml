@@ -27,6 +27,9 @@ configs:
       end
       return hs
 
+redisSecretInit:
+  enabled: false
+
 repoServer:
   env:
     - name: HELM_BINARY_PATH

@@ -11,6 +11,7 @@ configs:
       ignoreAggregatedRoles: true
     resource.customizations.ignoreDifferences.apps_Deployment: |
       jqPathExpressions:
+        - .status
         - .status.terminatingReplicas
     resource.customizations.health.argoproj.io_Application: |
       hs = {}

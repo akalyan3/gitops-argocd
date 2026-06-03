@@ -1,6 +1,7 @@
 # gitops-argocd
 
-GitOps platform built on Argo CD. This repo is the single source of truth for the cluster — Argo CD watches it and reconciles everything automatically, including itself.
+GitOps platform built on Argo CD. This repo is the single source of truth for the
+cluster — Argo CD watches it and reconciles everything automatically, including itself.
 
 ## What gets deployed
 
@@ -22,31 +23,22 @@ GitOps platform built on Argo CD. This repo is the single source of truth for th
 kind create cluster --name gitops --config kind-config.yaml
 ```
 
-### 2. Install Prometheus Operator CRDs
-
-kube-prometheus-stack requires its CRDs to exist before the operator can sync.
-Install them manually before bootstrapping:
-
-```bash
-kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-prometheuses.yaml
-kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-prometheusrules.yaml
-kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-servicemonitors.yaml
-kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-alertmanagers.yaml
-kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
-kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-probes.yaml
-kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-alertmanagerconfigs.yaml
-```
-
-### 3. Bootstrap
+### 2. Bootstrap
 
 ```bash
 ./scripts/bootstrap.sh
 ```
 
-Bootstrap installs Argo CD, applies the AppProject and root App-of-Apps, then hands
-control to Git. Don't run it again after this.
+Bootstrap does the following in order:
+- Creates the `argocd` namespace
+- Installs Prometheus Operator CRDs
+- Installs Argo CD via Helm with custom values
+- Applies the AppProject and root App-of-Apps
+- Prints credentials when done
 
-### 4. Access Argo CD
+After bootstrap, Git is in control. Do not run it again.
+
+### 3. Access Argo CD
 
 ```bash
 kubectl port-forward svc/argocd-server -n argocd 9090:80
@@ -54,7 +46,7 @@ kubectl port-forward svc/argocd-server -n argocd 9090:80
 
 http://localhost:9090 — username: `admin`, password printed by bootstrap.sh
 
-### 5. Access Grafana
+### 4. Access Grafana
 
 ```bash
 kubectl port-forward svc/prometheus-grafana -n monitoring 3000:80
@@ -62,13 +54,44 @@ kubectl port-forward svc/prometheus-grafana -n monitoring 3000:80
 
 http://localhost:3000 — username: `admin`, password: `prom-operator`
 
-### 6. Access Prometheus
+Navigate to Dashboards → Argo CD to see the pre-loaded dashboard.
+
+### 5. Access Prometheus
 
 ```bash
 kubectl port-forward svc/prometheus-prometheus -n monitoring 9091:9090
 ```
 
 http://localhost:9091
+
+## Verify everything works
+
+### Argo CD apps are synced
+```bash
+kubectl get applications -n argocd
+```
+Expected: `argocd-monitoring`, `prometheus-operator`, and `root-app` showing `Synced + Healthy`
+
+### Helm binary override is working
+```bash
+kubectl exec -n argocd deploy/argocd-repo-server -- /custom-tools/helm version
+```
+Expected: `version.BuildInfo{Version:"v3.14.4"...}`
+
+### Prometheus is scraping Argo CD
+```bash
+kubectl port-forward svc/prometheus-prometheus -n monitoring 9091:9090
+```
+Open http://localhost:9091/targets — look for 5 argocd targets all showing UP
+
+### Grafana dashboard is loaded
+Open http://localhost:3000 → Dashboards → search "Argo CD"
+
+### Alerts are configured
+```bash
+kubectl get prometheusrule -n monitoring
+```
+Expected: `argocd-alerts` present
 
 ## Making changes
 
@@ -87,14 +110,19 @@ is a single string edit in `argocd/install/values.yaml`.
 
 **Kustomize + helmCharts** — Both Argo CD and kube-prometheus-stack are rendered via
 Kustomize's `helmCharts` feature rather than native Helm Applications. This gives a
-Kustomize layer on top of Helm for patching without forking charts.
+Kustomize layer on top of Helm for future patching without forking charts.
 
-**Sync waves** — `argocd-self` runs at wave -2, `prometheus-operator` at wave 0, and
+**Sync waves** — `argocd-self` runs at wave -2, `prometheus-operator` at wave 0,
 `argocd-monitoring` at wave 2. This ensures CRDs exist before resources that depend
 on them.
 
 **Admission webhooks disabled** — `prometheusOperator.admissionWebhooks.enabled: false`
 is set for kind compatibility. Re-enable for production clusters.
+
+**CRD pre-installation** — kube-prometheus-stack CRDs are installed by `bootstrap.sh`
+before Argo CD attempts to sync the stack. This is required because Argo CD cannot
+apply CRD-dependent resources (ServiceMonitor, PrometheusRule) in the same sync
+operation that installs the CRDs themselves.
 
 ## Assumptions
 
@@ -115,6 +143,7 @@ kubectl logs -n argocd -l app.kubernetes.io/name=argocd-server --previous
 **App stuck in Progressing or Unknown**
 ```bash
 kubectl describe application <name> -n argocd
+kubectl annotate application <name> -n argocd argocd.argoproj.io/refresh=hard --overwrite
 ```
 
 **Custom Helm binary not applied**
@@ -127,10 +156,16 @@ kubectl logs -n argocd deploy/argocd-repo-server -c helm-installer
 ```bash
 kubectl get servicemonitor -n monitoring
 kubectl port-forward svc/prometheus-prometheus -n monitoring 9091:9090
-# http://localhost:9091/targets
+# http://localhost:9091/targets — look for argocd entries showing UP
 ```
 
 **Grafana dashboard not showing**
 ```bash
 kubectl logs -n monitoring deployment/prometheus-grafana -c grafana-sc-dashboard --tail=20
+```
+
+**Sync operation stuck**
+```bash
+kubectl patch application <name> -n argocd --type merge -p '{"operation":null}'
+kubectl rollout restart deployment/argocd-repo-server -n argocd
 ```

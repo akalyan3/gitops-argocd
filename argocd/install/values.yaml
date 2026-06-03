@@ -5,8 +5,8 @@ global:
 configs:
   params:
     server.insecure: "true"
-    kustomize.buildOptions: "--enable-helm"
   cm:
+    kustomize.buildOptions: "--enable-helm"
     resource.customizations.health.argoproj.io_Application: |
       hs = {}
       hs.status = "Progressing"

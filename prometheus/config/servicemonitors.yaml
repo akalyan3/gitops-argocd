@@ -14,7 +14,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: argocd-server-metrics
   endpoints:
-    - port: metrics
+    - port: http-metrics
       interval: 30s
       path: /metrics
 
@@ -35,7 +35,7 @@ spec:
       app.kubernetes.io/name: argocd-metrics
       app.kubernetes.io/component: application-controller
   endpoints:
-    - port: metrics
+    - port: http-metrics
       interval: 30s
       path: /metrics
 
@@ -55,7 +55,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: argocd-repo-server-metrics
   endpoints:
-    - port: metrics
+    - port: http-metrics
       interval: 30s
       path: /metrics
 
@@ -76,7 +76,7 @@ spec:
       app.kubernetes.io/name: argocd-metrics
       app.kubernetes.io/component: applicationset-controller
   endpoints:
-    - port: metrics
+    - port: http-metrics
       interval: 30s
       path: /metrics
 
@@ -97,6 +97,6 @@ spec:
       app.kubernetes.io/name: argocd-metrics
       app.kubernetes.io/component: notifications-controller
   endpoints:
-    - port: metrics
+    - port: http-metrics
       interval: 30s
       path: /metrics

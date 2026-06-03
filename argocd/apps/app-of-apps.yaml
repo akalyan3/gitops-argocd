@@ -41,6 +41,8 @@ spec:
         repoURL: https://github.com/akalyan3/gitops-argocd.git
         targetRevision: HEAD
         path: "{{path}}"
+        kustomize:
+          buildOptions: "--enable-helm"
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{namespace}}"

@@ -14,18 +14,21 @@ spec:
             path: argocd/install
             project: platform
             syncWave: "-2"
+            replace: "false"
 
           - appName: prometheus-operator
             namespace: monitoring
             path: prometheus/operator
             project: platform
             syncWave: "0"
+            replace: "true"
 
           - appName: argocd-monitoring
             namespace: monitoring
             path: prometheus/config
             project: platform
             syncWave: "2"
+            replace: "false"
 
   template:
     metadata:
@@ -57,5 +60,4 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - RespectIgnoreDifferences=true
-          - Replace=true
           - ApplyOutOfSyncOnly=true

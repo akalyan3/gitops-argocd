@@ -7,6 +7,11 @@ configs:
     server.insecure: "true"
   cm:
     kustomize.buildOptions: "--enable-helm"
+    resource.compareoptions: |
+      ignoreAggregatedRoles: true
+    resource.customizations.ignoreDifferences.apps_Deployment: |
+      jqPathExpressions:
+        - .status.terminatingReplicas
     resource.customizations.health.argoproj.io_Application: |
       hs = {}
       hs.status = "Progressing"
